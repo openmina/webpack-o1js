@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "deployAliases": {
+    "devnet": {
+      "url": "https://devnet.graphql.minaexplorer.com",
+      "fee": "0.1",
+      "smartContract": "Add"
+    },
+    "firstdeploy": {
+      "url": "https://devnet.graphql.minaexplorer.com",
+      "keyPath": "keys/firstdeploy.json",
+      "feepayerKeyPath": "/Users/teofil/.cache/zkapp-cli/keys/acc1.json",
+      "feepayerAlias": "acc1",
+      "fee": "2"
+    }
+  }
+}

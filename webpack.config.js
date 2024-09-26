@@ -1,16 +1,30 @@
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const path = require('path');
 
 module.exports = {
 	experiments: {
-		topLevelAwait: true
+		topLevelAwait: true,
 	},
-	entry: path.resolve(__dirname, "src/index.ts"),
+	entry: './bootstrap.js',
+	// entry: path.resolve(__dirname, "bootstrap.js"),
 	output: {
-		path: path.resolve(__dirname, "dist"),
-		filename: "index_bundle.js",
+		path: path.resolve(__dirname, 'dist'),
+		// filename: 'bootstrap.js',
+		// library: "myLibrary",
+		// libraryTarget: 'umd',
+		umdNamedDefine: true,
+		publicPath: '/',
+		filename: "bootstrap.js",
 		library: "$",
 		libraryTarget: "umd",
 	},
+	plugins: [
+		new CopyWebpackPlugin({
+			patterns: [
+				path.resolve(__dirname, 'index.html'),
+			],
+		}),
+	],
 	module: {
 		rules: [
 			{
@@ -21,14 +35,14 @@ module.exports = {
 			{
 				test: /\.(js)$/,
 				exclude: /node_modules/,
-				use: "babel-loader",
+				use: 'babel-loader',
 			},
 		],
 	},
 	resolve: {
 		extensions: ['.tsx', '.ts', '.js'],
 	},
-	mode: "development",
+	mode: 'development',
 	devServer: {
 		static: {
 			directory: path.join(__dirname, 'dist'),
@@ -37,7 +51,7 @@ module.exports = {
 		port: 9000,
 		headers: {
 			'Cross-Origin-Opener-Policy': 'same-origin',
-			'Cross-Origin-Embedder-Policy': 'require-corp'
-		}
-	}
+			'Cross-Origin-Embedder-Policy': 'require-corp',
+		},
+	},
 }

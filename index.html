@@ -1,18 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Demo</title>
+	<meta charset="UTF-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+	<title>Webpack O1JS</title>
+	<style>
+      body {
+          background: #0f1015;
+      }
+
+      button {
+          background-color: #1e73e2;
+          color: white;
+					font-weight: 600;
+					font-size: 24px;
+					width: 200px;
+					border: none;
+					border-radius: 6px;
+					cursor: pointer;
+					display: block;
+					margin-bottom: 5px;
+      }
+			button:hover {
+				background-color: #2e24d1;
+      }
+
+			.gql-2 {
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+					padding: 20px;
+					margin: 10px 0;
+					border: 1px solid white;
+					border-radius: 8px;
+      }
+	</style>
 </head>
 <body>
-<script src="dist/index_bundle.js"></script>
-<script>
-	// console.log($)
-	// console.log($.capital("hridayesh"))
-	// $.addDOMContent("Well It Works Fine!!!");
-	// await $.isReady2;
-	// console.log('o1 loaded')
-</script>
+<button id="tutorial2">Tutorial2</button>
+<button id="tutorial3">Tutorial 3</button>
+<button id="tutorialgql">Tutorial GQL</button>
+<div class="gql-2">
+	<button id="gql2deploy">Deploy ZK app</button>
+	<button id="gql2update">Update ZK app</button>
+</div>
+<button id="gql3">GQL Example 3</button>
+<button id="gql4">GQL Example 4</button>
+
+<script src="bootstrap.js"></script>
 </body>
 </html>
