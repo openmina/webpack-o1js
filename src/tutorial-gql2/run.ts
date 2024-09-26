@@ -71,7 +71,7 @@ console.log('zkAppKeys', {
 
 export async function gql2deploy(): Promise<void> {
 	// const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
-	const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');
+	const network = Mina.Network('http://65.109.105.40:5000/graphql');
 	Mina.setActiveInstance(network);
 	// const zkAppPublicKey = PublicKey.fromBase58(wallets[1].publicKey);
 	// const zkAppPrivateKey = PrivateKey.fromBase58(wallets[1].privateKey);
@@ -84,8 +84,8 @@ export async function gql2deploy(): Promise<void> {
 	log('Updating...');
 	log('ZkAPP pub_key:', zkAppKeys.publicKey.toBase58(), zkAppKeys.privateKey.toBase58());
 
-	const payerAccount: any = { sender: payerKeys.publicKey, fee: Number('0.117') * 1e9, nonce: Types.Account.toJSON(account).nonce };
-	log('payerAccount', { sender: payerKeys.publicKey.toBase58(), fee: Number('0.117') * 1e9, nonce: Types.Account.toJSON(account).nonce });
+	const payerAccount: any = { sender: payerKeys.publicKey, fee: Number('0.110') * 1e9, nonce: Types.Account.toJSON(account).nonce };
+	log('payerAccount', { sender: payerKeys.publicKey.toBase58(), fee: Number('0.110') * 1e9, nonce: Types.Account.toJSON(account).nonce });
 	let tx = await Mina.transaction(payerAccount, async () => {
 		AccountUpdate.fundNewAccount(payerKeys.publicKey);
 		log('zkApp deploying...');
@@ -110,7 +110,7 @@ export async function gql2deploy(): Promise<void> {
 }
 
 export async function gql2update(): Promise<void> {
-	const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');
+	const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
 	Mina.setActiveInstance(network);
 	// const zkAppPublicKey = PublicKey.fromBase58(wallets[1].publicKey);
 	// const zkAppPrivateKey = PrivateKey.fromBase58(wallets[1].privateKey);

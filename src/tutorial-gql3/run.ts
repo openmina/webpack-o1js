@@ -61,7 +61,7 @@ export async function gql3({ proofsEnabled } = { proofsEnabled: true }): Promise
 
 	const deployTxn = await Mina.transaction({
 		sender: deployerPublicKey,
-		fee: Number('0.5') * 1e9,
+		fee: Number('0.711') * 1e9,
 		memo: 'Sent using o1js!',
 		nonce: Number(Types.Account.toJSON(account).nonce),
 	}, async () => {
@@ -86,7 +86,7 @@ export async function gql3({ proofsEnabled } = { proofsEnabled: true }): Promise
 
 	const txn1 = await Mina.transaction({
 		sender: deployerPublicKey,
-		fee: Number('0.6') * 1e9,
+		fee: Number('0.811') * 1e9,
 		memo: 'Sent using o1js!',
 		nonce: Number(Types.Account.toJSON(account).nonce) + 1,
 	}, async () => {
@@ -106,7 +106,7 @@ export async function gql3({ proofsEnabled } = { proofsEnabled: true }): Promise
 	console.log('Initial state of proofsOnlyInstance:', proofsOnlyInstance.num.get().toString());
 	const txn2 = await Mina.transaction({
 		sender: deployerPublicKey,
-		fee: Number('0.7') * 1e9,
+		fee: Number('0.911') * 1e9,
 		memo: 'Sent using o1js!',
 		nonce: Number(Types.Account.toJSON(account).nonce) + 2,
 	}, async () => {

@@ -8,7 +8,7 @@ import {
 	method,
 	PublicKey,
 	Permissions,
-	TransactionVersion,
+	TransactionVersion, Bool,
 } from 'o1js';
 
 export class ProofsOnlyZkApp extends SmartContract {
@@ -35,7 +35,7 @@ export class ProofsOnlyZkApp extends SmartContract {
 
 	@method
 	override async init() {
-		this.account.provedState.getAndRequireEquals().assertFalse();
+		this.account.provedState.requireEquals(Bool(false));
 
 		super.init();
 		this.num.set(Field(1));
@@ -43,7 +43,7 @@ export class ProofsOnlyZkApp extends SmartContract {
 	}
 
 	@method async add(incrementBy: Field) {
-		// this.account.provedState.getAndRequireEquals().assertTrue();
+		this.account.provedState.requireEquals(Bool(true));
 
 		const num = this.num.getAndRequireEquals();
 		this.num.set(num.add(incrementBy));
@@ -52,14 +52,16 @@ export class ProofsOnlyZkApp extends SmartContract {
 	}
 
 	@method async incrementCalls() {
-		// this.account.provedState.getAndRequireEquals().assertTrue();
+		// const isInitialized = this.account.provedState.getAndRequireEquals();
+		// isInitialized.assertTrue();
+		this.account.provedState.requireEquals(Bool(true));
 
 		const calls = this.calls.getAndRequireEquals();
 		this.calls.set(calls.add(Field(1)));
 	}
 
 	@method async callSecondary(secondaryAddr: PublicKey) {
-		// this.account.provedState.getAndRequireEquals().assertTrue();
+		this.account.provedState.requireEquals(Bool(true));
 
 		const secondaryContract = new SecondaryZkApp(secondaryAddr);
 		const num = this.num.getAndRequireEquals();
