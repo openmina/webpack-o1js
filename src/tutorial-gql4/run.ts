@@ -73,7 +73,7 @@ const payerKeys = {
 };
 
 const zkApps: { publicKey: PublicKey; privateKey: PrivateKey; }[] = [];
-for (let i = 0; i < 1; i++ ) {
+for (let i = 0; i < 2; i++ ) {
 	const randPrivateKey = PrivateKey.random();
 	zkApps.push({
 		publicKey: randPrivateKey.toPublicKey(),
@@ -81,16 +81,25 @@ for (let i = 0; i < 1; i++ ) {
 	});
 }
 
+export interface ZkInput {
+	graphQlUrl: string;
+	payerPublicKey: string;
+	payerPrivateKey: string;
+	fee: number;
+	nonce: string;
+	memo?: string;
+}
 
-export async function gql4(): Promise<void> {
-	const network = Mina.Network('http://65.109.105.40:5000/graphql');
+export async function gql4(input: ZkInput): Promise<void> {
+	// const network = Mina.Network('http://65.109.105.40:5000/graphql');
 	// const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
+	const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');
 	Mina.setActiveInstance(network);
 	// const zkAppPublicKey = PublicKey.fromBase58(wallets[1].publicKey);
 	// const zkAppPrivateKey = PrivateKey.fromBase58(wallets[1].privateKey);
 	// const zks = zkApps.map((zkApp) => new Add(zkApp.publicKey));
 	const zk1 = new Add(zkApps[0].publicKey);
-	// const zk2 = new Add(zkApps[1].publicKey);
+	const zk2 = new Add(zkApps[1].publicKey);
 	console.log('fetching account...');
 	const { account } = await fetchAccount({ publicKey: payerKeys.publicKey });
 	console.log(account);
@@ -99,20 +108,21 @@ export async function gql4(): Promise<void> {
 	await Add.compile();
 	console.log('Updating...');
 	console.log('ZkAPP pub_key:', zkApps[0].publicKey.toBase58(), zkApps[0].privateKey.toBase58());
+	console.log('ZkAPP pub_key:', zkApps[1].publicKey.toBase58(), zkApps[1].privateKey.toBase58());
 
-	const payerAccount: any = { sender: payerKeys.publicKey, fee: Number('0.116') * 1e9, nonce: Number(Types.Account.toJSON(account).nonce) };
+	const payerAccount: any = { sender: payerKeys.publicKey, fee: Number('0.1') * 1e9, nonce: Types.Account.toJSON(account).nonce };
 	let tx = await Mina.transaction(payerAccount, async () => {
-		AccountUpdate.fundNewAccount(payerKeys.publicKey);
+		AccountUpdate.fundNewAccount(payerKeys.publicKey, 2);
 		console.log('zkApp deploying...');
 		await zk1.deploy();
-		// await zk2.deploy();
+		await zk2.deploy();
 	});
 
 	console.log('Proving...');
 	await tx.prove();
 
 	console.log('Submitting...');
-	await tx.sign([payerKeys.privateKey, zkApps[0].privateKey]);
+	await tx.sign([payerKeys.privateKey, zkApps[0].privateKey, zkApps[1].privateKey]);
 
 	await tx.safeSend().then((sentTx) => {
 		console.log(sentTx);

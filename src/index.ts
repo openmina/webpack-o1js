@@ -11,7 +11,7 @@ document.getElementById('tutorialgql').onclick = () => runTutorialGql();
 document.getElementById('gql2deploy').onclick = () => gql2deploy();
 document.getElementById('gql2update').onclick = () => gql2update();
 document.getElementById('gql3').onclick = () => gql3();
-document.getElementById('gql4').onclick = () => gql4();
+document.getElementById('gql4').onclick = () => gql4(null);
 
 // export {
 // 	gql2deploy,
