@@ -64,11 +64,6 @@ export const zkAppKeys = {
 	privateKey: randPrivateKey,
 };
 
-console.log('zkAppKeys', {
-	publicKey: zkAppKeys.publicKey.toBase58(),
-	privateKey: zkAppKeys.privateKey.toBase58()
-});
-
 export async function gql2deploy(): Promise<void> {
 	// const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
 	const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');

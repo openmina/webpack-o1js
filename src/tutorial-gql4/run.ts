@@ -1,11 +1,11 @@
 import {
-	AccountUpdate,
+	AccountUpdate, Bool,
 	fetchAccount,
 	Field,
 	method,
 	Mina,
-	Permissions,
-	PrivateKey,
+	Permissions, Poseidon,
+	PrivateKey, Provable,
 	PublicKey,
 	SmartContract,
 	state,
@@ -56,6 +56,54 @@ class Add extends SmartContract {
 	}
 }
 
+class IsEven extends SmartContract {
+	@state(Field) number = State<Field>();
+
+	// Initialize the zkApp with a number
+	override init() {
+		super.init();
+		this.number.set(Field(10));
+		this.initPermissions();
+	}
+
+	// Method to check if the number is even
+	@method
+	async checkEven() {
+		this.number.requireEquals(this.number.get());
+		const num = this.number.get();
+		const isEven = num.isEven();
+		this.generateProof(isEven);
+	}
+
+	// Generate a proof for the computation
+	generateProof(isEven: Bool) {
+		const hash = Poseidon.hash([this.number.get()]);
+		Provable.log(hash, isEven);
+	}
+
+	initPermissions() {
+		this.account.permissions.set({
+			...Permissions.default(),
+			setVerificationKey: {
+				txnVersion: TransactionVersion.current(),
+				auth: Permissions.proof(),
+			},
+			setDelegate: Permissions.proof(),
+			setPermissions: Permissions.proof(),
+			setZkappUri: Permissions.proof(),
+			setTokenSymbol: Permissions.proof(),
+			incrementNonce: Permissions.proof(),
+			setVotingFor: Permissions.proof(),
+			setTiming: Permissions.proof(),
+			send: Permissions.proof(),
+			editState: Permissions.proof(),
+			receive: Permissions.proof(),
+			access: Permissions.proof(),
+			editActionState: Permissions.proof(),
+		});
+	}
+}
+
 const wallets = [
 	{
 		privateKey: 'EKEQGWy4TjbVeqKjbe7TW81DKQM34min5FNmXpKArHKLyGVd3KSP',
@@ -73,7 +121,7 @@ const payerKeys = {
 };
 
 const zkApps: { publicKey: PublicKey; privateKey: PrivateKey; }[] = [];
-for (let i = 0; i < 2; i++ ) {
+for (let i = 0; i < 2; i++) {
 	const randPrivateKey = PrivateKey.random();
 	zkApps.push({
 		publicKey: randPrivateKey.toPublicKey(),
@@ -82,15 +130,15 @@ for (let i = 0; i < 2; i++ ) {
 }
 
 export interface ZkInput {
-	graphQlUrl: string;
 	payerPublicKey: string;
 	payerPrivateKey: string;
 	fee: number;
 	nonce: string;
 	memo?: string;
+	accountUpdates: number;
 }
 
-export async function gql4(input: ZkInput): Promise<void> {
+export async function gql4(): Promise<void> {
 	// const network = Mina.Network('http://65.109.105.40:5000/graphql');
 	// const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
 	const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');
@@ -134,3 +182,161 @@ export async function gql4(input: ZkInput): Promise<void> {
 	});
 }
 
+export async function gql4Update(input: ZkInput = {
+	payerPrivateKey: 'EKEQGWy4TjbVeqKjbe7TW81DKQM34min5FNmXpKArHKLyGVd3KSP',
+	payerPublicKey: 'B62qpD75xH5R19wxZG2uz8whNsHPTioVoYcPV3zfjjSbzTmaHQHKKEV',
+	accountUpdates: 1,
+	fee: 0.05,
+	memo: 'ZkApp Update o1js',
+	nonce: null,
+}, updates: { next: (val: { step: string, duration: number }) => void } = { next: (v) => {} }): Promise<any> {
+	console.log('----------- Updating ZkApp (Proof) -----------');
+	// const network = Mina.Network('http://65.109.105.40:5000/graphql');
+	const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
+	// const network = Mina.Network('http://adonagy.hz.minaprotocol.network:3000/graphql');
+	Mina.setActiveInstance(network);
+	const pairs = Array.from({ length: input.accountUpdates }, () => {
+		const randPrivateKey = PrivateKey.fromBase58('EKDx37bQBfayZn7M5rhDSVBZBBQLHZukqJMRfC1esVAPZ5iFzWSM');
+		return {
+			publicKey: randPrivateKey.toPublicKey(),
+			privateKey: randPrivateKey,
+		};
+	});
+	const zkApps: IsEven[] = pairs.map((pair) => new IsEven(pair.publicKey));
+
+	let stepStartTime = performance.now();
+
+	const updateStep = (step: string) => {
+		const now = performance.now();
+		updates.next({ step, duration: now - stepStartTime });
+		let duration = (now - stepStartTime) / 1000;
+		console.log(`${step} (${Math.round(duration * 10000) / 10000}s)`);
+		stepStartTime = now;
+	};
+
+	await IsEven.compile();
+	updateStep('Compiled');
+
+	const { account } = await fetchAccount({ publicKey: payerKeys.publicKey });
+
+	const payerAccount = {
+		sender: PublicKey.fromBase58(input.payerPublicKey),
+		fee: input.fee * 1e9,
+		nonce: Number(Types.Account.toJSON(account).nonce),
+		memo: input.memo,
+	};
+	let tx = await Mina.transaction(payerAccount, async () => {
+		await Promise.all(zkApps.map((zkApp) => zkApp.checkEven()));
+	});
+
+	updateStep('Proved Check Even');
+
+	await tx.prove();
+	updateStep('Proved');
+
+	await tx.sign([PrivateKey.fromBase58(input.payerPrivateKey), ...pairs.map((pair) => pair.privateKey)]);
+	updateStep('Signed');
+
+	return tx.safeSend().then((sentTx) => {
+		updateStep('Sent');
+		console.log(sentTx);
+		console.log('----------- Done -----------');
+		return sentTx;
+	});
+}
+
+export async function sendZkApp(graphQlUrl: string, input: ZkInput, updates: { next: (val: { step: string, duration: number }) => void }): Promise<any> {
+	console.log('----------- Sending ZkApp -----------');
+	const network = Mina.Network(graphQlUrl);
+	Mina.setActiveInstance(network);
+	const pairs = Array.from({ length: input.accountUpdates }, () => {
+		const randPrivateKey = PrivateKey.random();
+		console.log(randPrivateKey.toBase58());
+		return {
+			publicKey: randPrivateKey.toPublicKey(),
+			privateKey: randPrivateKey,
+		};
+	});
+	const zkApps: IsEven[] = pairs.map((pair) => new IsEven(pair.publicKey));
+
+	let stepStartTime = performance.now();
+
+	const updateStep = (step: string) => {
+		const now = performance.now();
+		updates.next({ step, duration: now - stepStartTime });
+		let duration = (now - stepStartTime) / 1000;
+		console.log(`${step} (${Math.round(duration * 10000) / 10000}s)`);
+		stepStartTime = now;
+	};
+
+	await IsEven.compile();
+	updateStep('Compiled');
+
+	const payerAccount = { sender: PublicKey.fromBase58(input.payerPublicKey), fee: input.fee * 1e9, nonce: Number(input.nonce), memo: input.memo };
+	let tx = await Mina.transaction(payerAccount, async () => {
+		AccountUpdate.fundNewAccount(PublicKey.fromBase58(input.payerPublicKey), input.accountUpdates);
+		await Promise.all(zkApps.map((zkApp) => zkApp.deploy()));
+	});
+
+	updateStep('Deployed');
+
+	await tx.prove();
+	updateStep('Proved');
+
+	await tx.sign([PrivateKey.fromBase58(input.payerPrivateKey), ...pairs.map((pair) => pair.privateKey)]);
+	updateStep('Signed');
+
+	return tx.safeSend().then((sentTx) => {
+		updateStep('Sent');
+		console.log(sentTx);
+		console.log('----------- Done -----------');
+		return sentTx;
+	});
+}
+
+export async function updateZkApp(graphQlUrl: string, input: ZkInput, updates: { next: (val: { step: string, duration: number }) => void }): Promise<any> {
+	console.log('----------- Sending ZkApp -----------');
+	const network = Mina.Network(graphQlUrl);
+	Mina.setActiveInstance(network);
+	const pairs = Array.from({ length: input.accountUpdates }, () => {
+		const randPrivateKey = PrivateKey.fromBase58('EKDx37bQBfayZn7M5rhDSVBZBBQLHZukqJMRfC1esVAPZ5iFzWSM');
+		return {
+			publicKey: randPrivateKey.toPublicKey(),
+			privateKey: randPrivateKey,
+		};
+	});
+	const zkApps: IsEven[] = pairs.map((pair) => new IsEven(pair.publicKey));
+
+	let stepStartTime = performance.now();
+
+	const updateStep = (step: string) => {
+		const now = performance.now();
+		updates.next({ step, duration: now - stepStartTime });
+		let duration = (now - stepStartTime) / 1000;
+		console.log(`${step} (${Math.round(duration * 10000) / 10000}s)`);
+		stepStartTime = now;
+	};
+
+	await IsEven.compile();
+	updateStep('Compiled');
+
+	const payerAccount = { sender: PublicKey.fromBase58(input.payerPublicKey), fee: input.fee * 1e9, nonce: Number(input.nonce), memo: input.memo };
+	let tx = await Mina.transaction(payerAccount, async () => {
+		await Promise.all(zkApps.map((zkApp) => zkApp.checkEven()));
+	});
+
+	updateStep('Proved Check Even');
+
+	await tx.prove();
+	updateStep('Proved');
+
+	await tx.sign([PrivateKey.fromBase58(input.payerPrivateKey), ...pairs.map((pair) => pair.privateKey)]);
+	updateStep('Signed');
+
+	return tx.safeSend().then((sentTx) => {
+		updateStep('Sent');
+		console.log(sentTx);
+		console.log('----------- Done -----------');
+		return sentTx;
+	});
+}

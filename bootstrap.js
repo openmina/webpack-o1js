@@ -1,8 +1,6 @@
 import("./coi-serviceworker.js");
- import("./src/index.ts");
+import("./src/index.ts");
 
-// const x = 'test export';
-// export  {
-// 	index,
-// 	x
-// };
+// import * as index from "./src/index.ts";
+//
+// export default index;

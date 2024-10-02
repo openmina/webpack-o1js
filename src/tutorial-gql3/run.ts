@@ -20,9 +20,9 @@ const payerKeys = {
 
 export async function gql3({ proofsEnabled } = { proofsEnabled: true }): Promise<void> {
 	console.log('Running Proof ZK App');
-	const network = Mina.Network('http://65.109.105.40:5000/graphql');
+	const network = Mina.Network('https://api.minascan.io/node/devnet/v1/graphql');
 	Mina.setActiveInstance(network);
-	// const Local = await Mina.LocalBlockchain({ proofsEnabled });
+// const Local = await Mina.LocalBlockchain({ proofsEnabled });
 	// Mina.setActiveInstance(Local);
 	// todo: add accounts from real wallets.
 	// const deployerPublicKey = Local.testAccounts[0];
