@@ -36,21 +36,17 @@ class Add extends SmartContract {
 		super.deploy();
 		this.account.permissions.set({
 			...Permissions.default(),
-			setVerificationKey: {
-				txnVersion: TransactionVersion.current(),
-				auth: Permissions.proof(),
-			},
-			setDelegate: Permissions.proof(),
-			setPermissions: Permissions.proof(),
-			setZkappUri: Permissions.proof(),
-			setTokenSymbol: Permissions.proof(),
-			incrementNonce: Permissions.proof(),
-			setVotingFor: Permissions.proof(),
-			setTiming: Permissions.proof(),
+			setDelegate: Permissions.signature(),
+			setPermissions: Permissions.signature(),
+			setZkappUri: Permissions.signature(),
+			setTokenSymbol: Permissions.signature(),
+			incrementNonce: Permissions.signature(),
+			setVotingFor: Permissions.signature(),
+			setTiming: Permissions.signature(),
 			send: Permissions.proof(),
 			editState: Permissions.proof(),
-			receive: Permissions.proof(),
-			access: Permissions.proof(),
+			receive: Permissions.none(),
+			access: Permissions.none(),
 			editActionState: Permissions.proof(),
 		});
 	}
@@ -61,9 +57,11 @@ class IsEven extends SmartContract {
 
 	// Initialize the zkApp with a number
 	override init() {
+		this.account.provedState.requireEquals(this.account.provedState.get());
+		this.account.provedState.get().assertFalse();
+
 		super.init();
 		this.number.set(Field(10));
-		this.initPermissions();
 	}
 
 	// Method to check if the number is even
@@ -78,27 +76,24 @@ class IsEven extends SmartContract {
 	// Generate a proof for the computation
 	generateProof(isEven: Bool) {
 		const hash = Poseidon.hash([this.number.get()]);
-		Provable.log(hash, isEven);
+		// Provable.log(hash, isEven);
 	}
 
-	initPermissions() {
+	override async deploy() {
+		super.deploy();
 		this.account.permissions.set({
 			...Permissions.default(),
-			setVerificationKey: {
-				txnVersion: TransactionVersion.current(),
-				auth: Permissions.proof(),
-			},
-			setDelegate: Permissions.proof(),
-			setPermissions: Permissions.proof(),
-			setZkappUri: Permissions.proof(),
-			setTokenSymbol: Permissions.proof(),
-			incrementNonce: Permissions.proof(),
-			setVotingFor: Permissions.proof(),
-			setTiming: Permissions.proof(),
+			setDelegate: Permissions.signature(),
+			setPermissions: Permissions.signature(),
+			setZkappUri: Permissions.signature(),
+			setTokenSymbol: Permissions.signature(),
+			incrementNonce: Permissions.signature(),
+			setVotingFor: Permissions.signature(),
+			setTiming: Permissions.signature(),
 			send: Permissions.proof(),
 			editState: Permissions.proof(),
-			receive: Permissions.proof(),
-			access: Permissions.proof(),
+			receive: Permissions.none(),
+			access: Permissions.none(),
 			editActionState: Permissions.proof(),
 		});
 	}
@@ -239,43 +234,51 @@ export async function gql4Update(input: ZkInput = {
 
 	return tx.safeSend().then((sentTx) => {
 		updateStep('Sent');
+		updateStep(null);
 		console.log(sentTx);
 		console.log('----------- Done -----------');
 		return sentTx;
 	});
 }
 
-export async function sendZkApp(graphQlUrl: string, input: ZkInput, updates: { next: (val: { step: string, duration: number }) => void }): Promise<any> {
+export async function deployZkApp(graphQlUrl: string, input: ZkInput, updates: { next: (val: { step: string, duration: number }) => void }): Promise<any> {
 	console.log('----------- Sending ZkApp -----------');
 	const network = Mina.Network(graphQlUrl);
 	Mina.setActiveInstance(network);
 	const pairs = Array.from({ length: input.accountUpdates }, () => {
 		const randPrivateKey = PrivateKey.random();
-		console.log(randPrivateKey.toBase58());
 		return {
 			publicKey: randPrivateKey.toPublicKey(),
 			privateKey: randPrivateKey,
 		};
 	});
-	const zkApps: IsEven[] = pairs.map((pair) => new IsEven(pair.publicKey));
+	console.log(pairs.map((pair) => pair.privateKey.toBase58()));
+	const zkApps: Add[] = pairs.map((pair) => new Add(pair.publicKey));
 
 	let stepStartTime = performance.now();
 
 	const updateStep = (step: string) => {
 		const now = performance.now();
-		updates.next({ step, duration: now - stepStartTime });
-		let duration = (now - stepStartTime) / 1000;
-		console.log(`${step} (${Math.round(duration * 10000) / 10000}s)`);
+		if (step === 'Compiling') {
+			updates.next({ step, duration: undefined });
+			return;
+		}
+		let duration = Math.round((now - stepStartTime) / 1000 * 1000) / 1000;
+		updates.next({ step, duration });
+		console.log(`${step} (${duration}s)`);
 		stepStartTime = now;
 	};
 
-	await IsEven.compile();
+	updateStep('Compiling');
+	await Add.compile();
 	updateStep('Compiled');
 
 	const payerAccount = { sender: PublicKey.fromBase58(input.payerPublicKey), fee: input.fee * 1e9, nonce: Number(input.nonce), memo: input.memo };
 	let tx = await Mina.transaction(payerAccount, async () => {
 		AccountUpdate.fundNewAccount(PublicKey.fromBase58(input.payerPublicKey), input.accountUpdates);
-		await Promise.all(zkApps.map((zkApp) => zkApp.deploy()));
+		for (const zkApp of zkApps) {
+			await zkApp.deploy();
+		}
 	});
 
 	updateStep('Deployed');
@@ -294,35 +297,47 @@ export async function sendZkApp(graphQlUrl: string, input: ZkInput, updates: { n
 	});
 }
 
+const deployedZkApps: string[] = [
+	"EKEbTHeqQbq5zeFuspjVSoatEebrG7fJnz8CrXyP4aVAXzeD1Z6A",
+	"EKFF1zZ4KUCZoe7GXHAPcfLdkGPgsYJ5RNtQvHMx8ndhY1pZttaa"
+];
+
 export async function updateZkApp(graphQlUrl: string, input: ZkInput, updates: { next: (val: { step: string, duration: number }) => void }): Promise<any> {
-	console.log('----------- Sending ZkApp -----------');
+	console.log('----------- Updating ZkApp -----------');
 	const network = Mina.Network(graphQlUrl);
 	Mina.setActiveInstance(network);
-	const pairs = Array.from({ length: input.accountUpdates }, () => {
-		const randPrivateKey = PrivateKey.fromBase58('EKDx37bQBfayZn7M5rhDSVBZBBQLHZukqJMRfC1esVAPZ5iFzWSM');
+	const pairs = Array.from({ length: input.accountUpdates }, (_, i: number) => {
+		const randPrivateKey = PrivateKey.fromBase58(deployedZkApps[i]);
 		return {
 			publicKey: randPrivateKey.toPublicKey(),
 			privateKey: randPrivateKey,
 		};
 	});
-	const zkApps: IsEven[] = pairs.map((pair) => new IsEven(pair.publicKey));
+	const zkApps: Add[] = pairs.map((pair) => new Add(pair.publicKey));
 
 	let stepStartTime = performance.now();
 
 	const updateStep = (step: string) => {
 		const now = performance.now();
-		updates.next({ step, duration: now - stepStartTime });
-		let duration = (now - stepStartTime) / 1000;
-		console.log(`${step} (${Math.round(duration * 10000) / 10000}s)`);
+		if (step === 'Compiling') {
+			updates.next({ step, duration: undefined });
+			return;
+		}
+		let duration = Math.round((now - stepStartTime) / 1000 * 1000) / 1000;
+		updates.next({ step, duration });
+		console.log(`${step} (${duration}s)`);
 		stepStartTime = now;
 	};
+	updateStep('Compiling');
 
-	await IsEven.compile();
+	await Add.compile();
 	updateStep('Compiled');
 
 	const payerAccount = { sender: PublicKey.fromBase58(input.payerPublicKey), fee: input.fee * 1e9, nonce: Number(input.nonce), memo: input.memo };
 	let tx = await Mina.transaction(payerAccount, async () => {
-		await Promise.all(zkApps.map((zkApp) => zkApp.checkEven()));
+		for (const zkApp of zkApps) {
+			await zkApp.update();
+		}
 	});
 
 	updateStep('Proved Check Even');
@@ -335,6 +350,7 @@ export async function updateZkApp(graphQlUrl: string, input: ZkInput, updates: {
 
 	return tx.safeSend().then((sentTx) => {
 		updateStep('Sent');
+		updateStep(null);
 		console.log(sentTx);
 		console.log('----------- Done -----------');
 		return sentTx;
